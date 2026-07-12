@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка — Гардероб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #F7F2EC;
+    --ink: #2A2320;
+    --plum: #4B2E3A;
+    --rose: #C98A9E;
+    --line: #E4DACD;
+    --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ivory); color: var(--ink); font-family: 'Manrope', sans-serif; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid var(--line);
+  }
+  .logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--plum); }
+  .logo span { color: var(--rose); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 32px; }
+
+  h1 { font-family: 'Fraunces', serif; color: var(--plum); font-size: 26px; margin-bottom: 6px; }
+  .subtitle { color: #8a7d74; font-size: 14px; margin-bottom: 28px; }
+
+  .btn {
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 14px;
+    padding: 9px 18px; border-radius: 100px; border: none; cursor: pointer;
+  }
+  .btn-approve { background: #3A6B33; color: white; }
+  .btn-reject { background: #A33A3A; color: white; }
+  .btn-plum { background: var(--plum); color: var(--ivory); }
+
+  .pending-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+  .pending-card h3 { font-family: 'Fraunces', serif; color: var(--plum); font-size: 18px; }
+  .pending-card .meta { font-size: 13px; color: #8a7d74; margin-top: 4px; }
+  .pending-card .desc { font-size: 14px; margin-top: 10px; }
+  .pending-card .price { font-weight: 700; margin-top: 8px; }
+  .pending-card .actions { display: flex; gap: 8px; flex-direction: column; }
+
+  .empty { text-align: center; padding: 60px 20px; color: #8a7d74; }
+  .gate { text-align: center; padding: 100px 20px; }
+  .gate p { color: #8a7d74; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Гардероб<span>.</span> — админка</div>
+  <div id="auth-area"></div>
+</header>
+
+<main>
+  <div id="gate" class="gate">
+    <h1>Вход для администратора</h1>
+    <p>Войди через Telegram — доступ откроется, если твой аккаунт указан в списке администраторов.</p>
+    <div id="telegram-login-container" style="margin-top:20px; display:flex; justify-content:center;"></div>
+  </div>
+
+  <div id="admin-panel" style="display:none;">
+    <h1>Заявки на партнёрство</h1>
+    <p class="subtitle">Проверь ФИО/компанию, телефон, адрес и удостоверение перед тем, как открыть добавление платьев</p>
+    <div id="pending-users-list"><div class="empty">Загружаем…</div></div>
+
+    <h1 style="margin-top:40px;">Платья на модерации</h1>
+    <p class="subtitle">Проверь фото/описание перед публикацией в каталоге</p>
+    <div id="pending-list"><div class="empty">Загружаем…</div></div>
+  </div>
+</main>
+
+<script>
+  const API_BASE = "https://dress-rental-api-production.up.railway.app";
+  const TELEGRAM_BOT_USERNAME = "dressrentkz_bot";
+
+  let authToken = localStorage.getItem("auth_token") || null;
+
+  function renderTelegramWidget() {
+    const container = document.getElementById("telegram-login-container");
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.setAttribute("data-request-access", "write");
+    script.async = true;
+    container.innerHTML = "";
+    container.appendChild(script);
+  }
+
+  async function onTelegramAuth(user) {
+    try {
+      const res = await fetch(`${API_BASE}/auth/telegram-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(user)
+      });
+      if (!res.ok) throw new Error("Ошибка входа");
+      const data = await res.json();
+      authToken = data.access_token;
+      localStorage.setItem("auth_token", authToken);
+      checkAdminAccess();
+    } catch (e) {
+      alert("Не удалось войти: " + e.message);
+    }
+  }
+
+  async function checkAdminAccess() {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/dresses/pending`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (res.status === 403) {
+        document.getElementById("gate").innerHTML = `
+          <h1>Доступ закрыт</h1>
+          <p>Этот Telegram-аккаунт не в списке администраторов.</p>
+        `;
+        return;
+      }
+      if (!res.ok) throw new Error("Ошибка сервера");
+      const dresses = await res.json();
+      document.getElementById("gate").style.display = "none";
+      document.getElementById("admin-panel").style.display = "block";
+      renderPending(dresses);
+      loadPendingUsers();
+    } catch (e) {
+      document.getElementById("gate").innerHTML = `<h1>Ошибка</h1><p>${e.message}</p>`;
+    }
+  }
+
+  async function loadPendingUsers() {
+    const list = document.getElementById("pending-users-list");
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/pending`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить пользователей");
+      const users = await res.json();
+      renderPendingUsers(users);
+    } catch (e) {
+      list.innerHTML = `<div class="empty">${e.message}</div>`;
+    }
+  }
+
+  function renderPendingUsers(users) {
+    const list = document.getElementById("pending-users-list");
+    if (!users.length) {
+      list.innerHTML = `<div class="empty">Нет анкет на проверке.</div>`;
+      return;
+    }
+    list.innerHTML = users.map(u => `
+      <div class="pending-card" id="user-card-${u.id}">
+        <div>
+          <h3>${u.full_name || "Без имени"}</h3>
+          <div class="meta">Telegram: @${u.telegram_username || "—"}</div>
+          <div class="desc">Телефон: ${u.phone || "—"}</div>
+          <div class="desc">Адрес: ${u.address || "—"}</div>
+          <div class="desc">Удостоверение: ${u.id_document_note || "—"}</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-approve" onclick="moderateUser(${u.id}, 'approve')">Одобрить</button>
+          <button class="btn btn-reject" onclick="moderateUser(${u.id}, 'reject')">Отклонить</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function moderateUser(userId, action) {
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/${action}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не получилось выполнить действие");
+      document.getElementById(`user-card-${userId}`).remove();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function renderPending(dresses) {
+    const list = document.getElementById("pending-list");
+    if (!dresses.length) {
+      list.innerHTML = `<div class="empty">Нет платьев на модерации — всё разобрано.</div>`;
+      return;
+    }
+    list.innerHTML = dresses.map(d => {
+      const photos = d.photo_urls || [];
+      const photosHtml = photos.length ? `
+        <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+          ${photos.map(p => `<img src="${p}" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">`).join("")}
+        </div>
+      ` : `<div style="font-size:13px; color:#A33A3A; margin-top:10px;">Фото не загружены</div>`;
+
+      const videoHtml = d.video_url ? `
+        <video controls style="width:160px; border-radius:8px; margin-top:10px;">
+          <source src="${d.video_url}" type="video/mp4">
+        </video>
+      ` : `<div style="font-size:13px; color:#8a7d74; margin-top:6px;">Видео нет</div>`;
+
+      return `
+      <div class="pending-card" id="card-${d.id}">
+        <div>
+          <h3>${d.title}</h3>
+          <div class="meta">${d.brand || "Без бренда"} · размер ${d.size} · ${d.city} · ${d.occasion || ""}</div>
+          <div class="desc">${d.description || "Без описания"}</div>
+          <div class="price">${d.price_1day.toLocaleString("ru-RU")} ₸ / день · залог ${d.deposit.toLocaleString("ru-RU")} ₸</div>
+          ${photosHtml}
+          ${videoHtml}
+        </div>
+        <div class="actions">
+          <button class="btn btn-approve" onclick="moderate(${d.id}, 'approve')">Одобрить</button>
+          <button class="btn btn-reject" onclick="moderate(${d.id}, 'reject')">Отклонить</button>
+        </div>
+      </div>
+    `}).join("");
+  }
+
+  async function moderate(dressId, action) {
+    try {
+      const res = await fetch(`${API_BASE}/admin/dresses/${dressId}/${action}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не получилось выполнить действие");
+      document.getElementById(`card-${dressId}`).remove();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  if (authToken) {
+    checkAdminAccess();
+  } else {
+    renderTelegramWidget();
+  }
+</script>
+
+</body>
+</html>
