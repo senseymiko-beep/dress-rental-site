@@ -549,8 +549,32 @@
     const d = dressesCache.find(x => x.id === id);
     if (!d) return;
     const content = document.getElementById("dress-modal-content");
+
+    const photos = d.photo_urls || [];
+    const galleryHtml = photos.length ? `
+      <div class="gallery">
+        <img id="gallery-main-img" src="${photos[0]}" style="width:100%; border-radius:12px; aspect-ratio:3/4; object-fit:cover;">
+        ${photos.length > 1 ? `
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            ${photos.map((p, i) => `
+              <img src="${p}" onclick="document.getElementById('gallery-main-img').src='${p}'"
+                   style="width:52px; height:52px; object-fit:cover; border-radius:8px; cursor:pointer; border:2px solid ${i===0 ? 'var(--rose)' : 'transparent'};">
+            `).join("")}
+          </div>
+        ` : ""}
+      </div>
+    ` : `<div style="background:#F0E7DB; aspect-ratio:3/4; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#a89a89;">Фото пока нет</div>`;
+
+    const videoHtml = d.video_url ? `
+      <video controls style="width:100%; border-radius:12px; margin-top:10px;">
+        <source src="${d.video_url}" type="video/mp4">
+      </video>
+    ` : "";
+
     content.innerHTML = `
-      <h2>${d.title}</h2>
+      ${galleryHtml}
+      ${videoHtml}
+      <h2 style="margin-top:16px;">${d.title}</h2>
       <div class="meta" style="margin-bottom:14px;">${d.brand || "Без бренда"} · размер ${d.size} · ${d.city}</div>
       <p>${d.description || ""}</p>
       <div class="field-row" style="margin-top:16px;">
