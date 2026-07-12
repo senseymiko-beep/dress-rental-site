@@ -390,8 +390,17 @@
         <label>Описание</label>
         <textarea id="f-description" placeholder="Состояние, ткань, особенности посадки..."></textarea>
       </div>
+      <div class="field">
+        <label>Фото (до 5 штук)</label>
+        <input type="file" id="f-photos" accept="image/*" multiple>
+      </div>
+      <div class="field">
+        <label>Видео-разворот (до 15 секунд)</label>
+        <input type="file" id="f-video" accept="video/*">
+        <div id="video-warning" style="font-size:12px; color:#A33A3A; margin-top:6px;"></div>
+      </div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="submitDress()">Отправить на модерацию</button>
+        <button class="btn btn-primary" id="submit-dress-btn" onclick="submitDress()">Отправить на модерацию</button>
       </div>
       <div id="add-status"></div>
     </div>
@@ -402,6 +411,40 @@
   // ==== НАСТРОЙКИ: впиши сюда адрес своего API с Railway ====
   const API_BASE = "https://dress-rental-api-production.up.railway.app";
   const TELEGRAM_BOT_USERNAME = "dressrentkz_bot";
+
+  const CLOUDINARY_CLOUD_NAME = "rf1r05uz";
+  const CLOUDINARY_UPLOAD_PRESET = "y2bfmndr";
+
+  // Проверяет длительность видео перед загрузкой — не даём загрузить длиннее 15 сек
+  function checkVideoDuration(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        if (video.duration > 15) {
+          reject(new Error(`Видео длиной ${Math.round(video.duration)} сек — максимум 15 секунд`));
+        } else {
+          resolve();
+        }
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function uploadToCloudinary(file, resourceType) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+      { method: "POST", body: formData }
+    );
+    if (!res.ok) throw new Error("Не удалось загрузить файл в Cloudinary");
+    const data = await res.json();
+    return data.secure_url;
+  }
 
   let authToken = localStorage.getItem("auth_token") || null;
   let currentUserId = localStorage.getItem("user_id") || null;
@@ -574,25 +617,56 @@
 
   async function submitDress() {
     const statusEl = document.getElementById("add-status");
-    const payload = {
-      title: document.getElementById("f-title").value,
-      brand: document.getElementById("f-brand").value,
-      size: document.getElementById("f-size").value,
-      city: document.getElementById("f-city").value,
-      occasion: document.getElementById("f-occasion").value,
-      price_1day: parseInt(document.getElementById("f-price1").value || "0"),
-      price_3day: parseInt(document.getElementById("f-price3").value || "0"),
-      deposit: parseInt(document.getElementById("f-deposit").value || "0"),
-      description: document.getElementById("f-description").value,
-      measurements: {}
-    };
+    const submitBtn = document.getElementById("submit-dress-btn");
 
-    if (!payload.title || !payload.size || !payload.city) {
+    const title = document.getElementById("f-title").value;
+    const size = document.getElementById("f-size").value;
+    const city = document.getElementById("f-city").value;
+
+    if (!title || !size || !city) {
       statusEl.innerHTML = `<div class="status-msg error">Заполни название, размер и город</div>`;
       return;
     }
 
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Загружаем фото и видео...";
+    statusEl.innerHTML = "";
+
     try {
+      // 1. Проверяем и загружаем видео (если есть)
+      let videoUrl = null;
+      const videoFile = document.getElementById("f-video").files[0];
+      if (videoFile) {
+        await checkVideoDuration(videoFile);
+        videoUrl = await uploadToCloudinary(videoFile, "video");
+      }
+
+      // 2. Загружаем фото (до 5 штук)
+      const photoFiles = Array.from(document.getElementById("f-photos").files).slice(0, 5);
+      const photoUrls = [];
+      for (const file of photoFiles) {
+        const url = await uploadToCloudinary(file, "image");
+        photoUrls.push(url);
+      }
+
+      submitBtn.textContent = "Сохраняем...";
+
+      // 3. Создаём платье со ссылками на медиа
+      const payload = {
+        title,
+        brand: document.getElementById("f-brand").value,
+        size,
+        city,
+        occasion: document.getElementById("f-occasion").value,
+        price_1day: parseInt(document.getElementById("f-price1").value || "0"),
+        price_3day: parseInt(document.getElementById("f-price3").value || "0"),
+        deposit: parseInt(document.getElementById("f-deposit").value || "0"),
+        description: document.getElementById("f-description").value,
+        measurements: {},
+        video_url: videoUrl,
+        photo_urls: photoUrls
+      };
+
       const res = await fetch(`${API_BASE}/dresses`, {
         method: "POST",
         headers: {
@@ -606,6 +680,9 @@
       statusEl.innerHTML = `<div class="status-msg ok">Платье отправлено на модерацию!</div>`;
     } catch (e) {
       statusEl.innerHTML = `<div class="status-msg error">${e.message}</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Отправить на модерацию";
     }
   }
 
