@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кабинет партнёра — Гардероб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #F7F2EC; --ink: #2A2320; --plum: #4B2E3A; --rose: #C98A9E;
+    --gold: #AD8A50; --line: #E4DACD; --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ivory); color: var(--ink); font-family: 'Manrope', sans-serif; line-height: 1.5; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid var(--line);
+  }
+  .logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--plum); }
+  .logo span { color: var(--rose); }
+  a.back-link { color: var(--plum); font-size: 14px; text-decoration: none; font-weight: 600; }
+
+  main { max-width: 820px; margin: 0 auto; padding: 40px 24px; }
+  h1 { font-size: 26px; color: var(--plum); margin-bottom: 8px; }
+  h2 { font-size: 17px; color: var(--plum); margin-top: 32px; margin-bottom: 14px; }
+  .subtitle { color: #8a7d74; font-size: 14px; margin-bottom: 20px; }
+
+  .card {
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  }
+  .card .title { font-weight: 700; color: var(--plum); font-size: 16px; }
+  .card .meta { font-size: 13px; color: #8a7d74; margin-top: 4px; }
+
+  .status-tag { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+  .status-tag.pending { background: #FBF3E3; color: #9A7A2E; }
+  .status-tag.payment_reported { background: #E3EEF9; color: #2E5A9A; }
+  .status-tag.confirmed, .status-tag.picked_up, .status-tag.returned { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.cancelled, .status-tag.disputed { background: #FBEAEA; color: #A33A3A; }
+  .status-tag.approved { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.rejected, .status-tag.archived { background: #F0E7DB; color: #8a7d74; }
+
+  .btn {
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 13px;
+    padding: 8px 16px; border-radius: 100px; border: none; cursor: pointer;
+    text-decoration: none; display: inline-block; margin-top: 8px; margin-right: 8px;
+  }
+  .btn-primary { background: var(--plum); color: var(--ivory); }
+  .btn-whatsapp { background: #25D366; color: white; }
+  .btn-telegram { background: #229ED9; color: white; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #8a7d74; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Гардероб<span>.</span></div>
+  <a href="index.html" class="back-link">← На главную</a>
+</header>
+
+<main>
+  <h1>Кабинет партнёра</h1>
+  <p class="subtitle">Твои платья и заказы на них</p>
+
+  <h2>Мои платья</h2>
+  <div id="dresses-list"><div class="empty-state">Загружаем…</div></div>
+
+  <h2>Заказы на мои платья</h2>
+  <div id="orders-list"><div class="empty-state">Загружаем…</div></div>
+</main>
+
+<script>
+  const API_BASE = "https://dress-rental-api-production.up.railway.app";
+  const authToken = localStorage.getItem("auth_token");
+
+  const STATUS_LABELS = {
+    pending: "Ожидает оплаты",
+    payment_reported: "Оплата на проверке",
+    confirmed: "Подтверждено",
+    picked_up: "Платье получено",
+    returned: "Платье возвращено",
+    disputed: "Спор",
+    cancelled: "Отменено"
+  };
+
+  const DRESS_STATUS_LABELS = { pending: "На модерации", approved: "Опубликовано", rejected: "Отклонено", archived: "В архиве" };
+
+  function buildMessengerLinks(phone, telegramUsername) {
+    let html = "";
+    if (phone) {
+      const digits = phone.replace(/[^0-9]/g, "");
+      html += `<a href="https://wa.me/${digits}" target="_blank" class="btn btn-whatsapp">WhatsApp</a>`;
+    }
+    if (telegramUsername) {
+      html += `<a href="https://t.me/${telegramUsername}" target="_blank" class="btn btn-telegram">Telegram</a>`;
+    }
+    return html;
+  }
+
+  if (!authToken) {
+    document.querySelector("main").innerHTML = `
+      <div class="empty-state">
+        Сначала войди через Telegram на главной странице.<br>
+        <a href="index.html" class="btn btn-primary" style="margin-top:14px;">На главную</a>
+      </div>
+    `;
+  } else {
+    loadDresses();
+    loadOrders();
+  }
+
+  async function loadDresses() {
+    const container = document.getElementById("dresses-list");
+    try {
+      const res = await fetch(`${API_BASE}/dresses/mine/list`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить платья — заполни анкету партнёра на главной странице, если ещё не подавал");
+      const dresses = await res.json();
+      if (!dresses.length) {
+        container.innerHTML = `<div class="empty-state">У тебя пока нет добавленных платьев.</div>`;
+        return;
+      }
+      container.innerHTML = dresses.map(d => `
+        <div class="card">
+          <div>
+            <div class="title">${d.title}</div>
+            <div class="meta">${d.city} · размер ${d.size} · от ${d.price_3day.toLocaleString("ru-RU")} ₸ / 3 дня</div>
+          </div>
+          <span class="status-tag ${d.status}">${DRESS_STATUS_LABELS[d.status] || d.status}</span>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  async function loadOrders() {
+    const container = document.getElementById("orders-list");
+    try {
+      const res = await fetch(`${API_BASE}/bookings/owner`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить заказы");
+      const orders = await res.json();
+      if (!orders.length) {
+        container.innerHTML = `<div class="empty-state">Заказов пока нет.</div>`;
+        return;
+      }
+      // Сначала те, что требуют действия
+      const priority = { confirmed: 0, payment_reported: 1, picked_up: 2 };
+      orders.sort((a, b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9));
+
+      container.innerHTML = orders.map(o => `
+        <div class="card" id="order-${o.id}">
+          <div>
+            <div class="title">${o.dress_title}</div>
+            <div class="meta">${o.date_from} → ${o.date_to} · ${o.total_price.toLocaleString("ru-RU")} ₸ (комиссия ${o.commission_amount.toLocaleString("ru-RU")} ₸)</div>
+            <div class="meta">Арендатор: ${o.renter_name || "—"} · ${o.renter_phone || ""}</div>
+            <div style="margin-top:6px;">${buildMessengerLinks(o.renter_phone, o.renter_telegram_username)}</div>
+            <span class="status-tag ${o.status}" style="margin-top:6px; display:inline-block;">${STATUS_LABELS[o.status] || o.status}</span>
+            <div>
+              ${o.status === "confirmed" ? `<button class="btn btn-primary" onclick="updateOrderStatus(${o.id}, 'picked_up')">Отметить: платье выдано</button>` : ""}
+              ${o.status === "picked_up" ? `<button class="btn btn-primary" onclick="updateOrderStatus(${o.id}, 'returned')">Отметить: платье возвращено</button>` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  async function updateOrderStatus(bookingId, newStatus) {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/status?new_status=${newStatus}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не получилось обновить статус");
+      loadOrders();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+</script>
+
+</body>
+</html>
