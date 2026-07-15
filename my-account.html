@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный кабинет — Гардероб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #F7F2EC; --ink: #2A2320; --plum: #4B2E3A; --rose: #C98A9E;
+    --gold: #AD8A50; --line: #E4DACD; --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ivory); color: var(--ink); font-family: 'Manrope', sans-serif; line-height: 1.5; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid var(--line);
+  }
+  .logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--plum); }
+  .logo span { color: var(--rose); }
+  a.back-link { color: var(--plum); font-size: 14px; text-decoration: none; font-weight: 600; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 40px 24px; }
+  h1 { font-size: 26px; color: var(--plum); margin-bottom: 24px; }
+  h2 { font-size: 17px; color: var(--plum); margin-top: 32px; margin-bottom: 14px; }
+  .subtitle-note { font-size: 13px; color: #8a7d74; margin-top: -8px; margin-bottom: 14px; }
+  .field { margin-top: 12px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #5a4f49; }
+  .field input {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    font-family: 'Manrope', sans-serif; font-size: 14px;
+  }
+  .status-msg { font-size: 13px; padding: 8px 10px; border-radius: 8px; }
+  .status-msg.error { background: #FBEAEA; color: #A33A3A; }
+  .status-msg.ok { background: #E9F3E7; color: #3A6B33; }
+
+  .profile-card {
+    background: #F0E7DB; border-radius: 12px; padding: 16px 18px; font-size: 14px;
+  }
+  .profile-card .name { font-weight: 700; font-size: 16px; }
+  .profile-card .sub { color: #8a7d74; margin-top: 4px; }
+
+  .booking-card {
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin-bottom: 12px;
+  }
+  .booking-card .title { font-weight: 700; color: var(--plum); font-size: 16px; }
+  .booking-card .meta { font-size: 13px; color: #8a7d74; margin-top: 4px; }
+
+  .status-tag { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+  .status-tag.pending { background: #FBF3E3; color: #9A7A2E; }
+  .status-tag.payment_reported { background: #E3EEF9; color: #2E5A9A; }
+  .status-tag.confirmed, .status-tag.picked_up, .status-tag.returned { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.cancelled, .status-tag.disputed { background: #FBEAEA; color: #A33A3A; }
+  .status-tag.approved { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.not_submitted, .status-tag.rejected { background: #F0E7DB; color: #8a7d74; }
+
+  .btn {
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 13px;
+    padding: 8px 16px; border-radius: 100px; border: none; cursor: pointer;
+    text-decoration: none; display: inline-block; margin-top: 10px; margin-right: 8px;
+  }
+  .btn-primary { background: var(--plum); color: var(--ivory); }
+  .btn-whatsapp { background: #25D366; color: white; }
+  .btn-telegram { background: #229ED9; color: white; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #8a7d74; }
+  .contact-box { background: #F0E7DB; border-radius: 8px; padding: 10px; font-size: 13px; margin-top: 10px; }
+
+  @media (max-width: 760px) {
+    header { padding: 14px 16px; }
+    main { padding: 24px 16px; }
+    .btn { width: 100%; text-align: center; margin-right: 0; }
+  }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(43,35,32,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--card-bg); border-radius: 18px; max-width: 460px; width: 100%;
+    max-height: 88vh; overflow-y: auto; padding: 28px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Гардероб<span>.</span></div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <div id="auth-area"></div>
+    <a href="index.html" class="back-link">← На главную</a>
+  </div>
+</header>
+
+<!-- Модалка: соглашение при первом входе -->
+<div class="overlay" id="terms-overlay">
+  <div class="modal">
+    <h2>Пользовательское соглашение</h2>
+    <div style="margin-top:12px; padding:14px; background:#F0E7DB; border-radius:10px; font-size:13px; max-height:260px; overflow-y:auto;">
+      <span id="terms-overlay-text"></span>
+    </div>
+    <div class="field" style="display:flex; align-items:flex-start; gap:8px; margin-top:14px;">
+      <input type="checkbox" id="terms-overlay-checkbox" style="width:auto; margin-top:3px;">
+      <label style="font-weight:400; font-size:13px;" for="terms-overlay-checkbox">Я прочитал(а) и принимаю условия</label>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="acceptTerms()">Продолжить</button>
+    <div id="terms-overlay-status"></div>
+  </div>
+</div>
+
+<main>
+  <h1>Личный кабинет</h1>
+  <div id="profile-summary"><div class="empty-state">Загружаем…</div></div>
+
+  <h2>Данные для бронирования</h2>
+  <p class="subtitle-note">Телефон и фото удостоверения нужны один раз, перед первой бронью — без этого забронировать платье нельзя.</p>
+  <div id="renter-info-block"></div>
+
+  <div id="partner-cabinet-block"></div>
+
+  <h2>Мои брони</h2>
+  <div id="bookings-list"><div class="empty-state">Загружаем…</div></div>
+</main>
+
+<script>
+  const API_BASE = "https://dress-rental-api-production.up.railway.app";
+  let authToken = localStorage.getItem("auth_token");
+  const TELEGRAM_BOT_USERNAME = "dressrentkz_bot";
+
+  const CLOUDINARY_CLOUD_NAME = "rf1r05uz";
+  const CLOUDINARY_UPLOAD_PRESET = "y2bfmndr";
+
+  async function uploadToCloudinary(file, resourceType) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+      { method: "POST", body: formData }
+    );
+    if (!res.ok) throw new Error("Не удалось загрузить фото");
+    const data = await res.json();
+    return data.secure_url;
+  }
+
+  const STATUS_LABELS = {
+    pending: "Ожидает оплаты",
+    payment_reported: "Оплата на проверке",
+    confirmed: "Подтверждено",
+    picked_up: "Платье получено",
+    returned: "Платье возвращено",
+    disputed: "Спор",
+    cancelled: "Отменено"
+  };
+
+  const PARTNER_STATUS_LABELS = {
+    not_submitted: "не подана заявка",
+    pending: "на проверке",
+    approved: "одобрен",
+    rejected: "отклонён"
+  };
+
+  // Строит ссылки на WhatsApp/Telegram из телефона и username
+  function buildMessengerLinks(phone, telegramUsername) {
+    let html = "";
+    if (phone) {
+      const digits = phone.replace(/[^0-9]/g, "");
+      html += `<a href="https://wa.me/${digits}" target="_blank" class="btn btn-whatsapp">Написать в WhatsApp</a>`;
+    }
+    if (telegramUsername) {
+      html += `<a href="https://t.me/${telegramUsername}" target="_blank" class="btn btn-telegram">Написать в Telegram</a>`;
+    }
+    return html;
+  }
+
+  const TERMS_TEXT = `
+    <strong>Пользовательское соглашение сервиса «Гардероб» (черновик)</strong><br><br>
+    Это предварительный текст-заглушка — перед реальным запуском его должен проверить юрист.<br><br>
+    1. Платформа выступает посредником между арендатором и владельцем платья, не является стороной сделки.<br>
+    2. Владелец платья несёт ответственность за достоверность описания и состояния вещи.<br>
+    3. Арендатор обязуется вернуть платье в оговорённый срок в том же состоянии.<br>
+    4. Залог удерживается платформой/владельцем и возвращается после осмотра платья при возврате.<br>
+    5. Споры по повреждению или задержке возврата решаются по предоставленным фото и комментариям сторон.<br>
+    6. Персональные данные (ФИО, телефон, адрес, удостоверение) используются только для проверки личности и связи между сторонами сделки.
+  `;
+
+  function renderAuthArea() {
+    const container = document.getElementById("auth-area");
+    if (authToken) {
+      container.innerHTML = `<button class="btn btn-ghost" onclick="logout()">Выйти</button>`;
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
+    script.setAttribute("data-size", "medium");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
+    script.setAttribute("data-request-access", "write");
+    script.async = true;
+    container.innerHTML = "";
+    container.appendChild(script);
+  }
+
+  async function onTelegramAuth(user) {
+    try {
+      const res = await fetch(`${API_BASE}/auth/telegram-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(user)
+      });
+      if (!res.ok) throw new Error("Ошибка входа");
+      const data = await res.json();
+      authToken = data.access_token;
+      localStorage.setItem("auth_token", authToken);
+      localStorage.setItem("user_id", data.user_id);
+      renderAuthArea();
+      renderMainContent();
+    } catch (e) {
+      alert("Не удалось войти через Telegram: " + e.message);
+    }
+  }
+
+  function logout() {
+    authToken = null;
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_id");
+    renderAuthArea();
+    renderMainContent();
+  }
+
+  function renderMainContent() {
+    if (!authToken) {
+      document.querySelector("main").innerHTML = `
+        <div class="empty-state">
+          Войди через Telegram (кнопка вверху справа), чтобы открыть личный кабинет.
+        </div>
+      `;
+      return;
+    }
+    document.querySelector("main").innerHTML = `
+      <h1>Личный кабинет</h1>
+      <div id="profile-summary"><div class="empty-state">Загружаем…</div></div>
+
+      <h2>Данные для бронирования</h2>
+      <p class="subtitle-note">Телефон и фото удостоверения нужны один раз, перед первой бронью — без этого забронировать платье нельзя.</p>
+      <div id="renter-info-block"></div>
+
+      <div id="partner-cabinet-block"></div>
+
+      <h2>Мои брони</h2>
+      <div id="bookings-list"><div class="empty-state">Загружаем…</div></div>
+    `;
+    loadProfile();
+    loadBookings();
+    checkTerms();
+  }
+
+  async function checkTerms() {
+    try {
+      const res = await fetch(`${API_BASE}/users/me`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) return;
+      const profile = await res.json();
+      if (!profile.agreed_to_terms) {
+        document.getElementById("terms-overlay-text").innerHTML = TERMS_TEXT;
+        document.getElementById("terms-overlay").classList.add("open");
+      }
+    } catch (e) {
+      console.error("Не удалось проверить согласие", e);
+    }
+  }
+
+  async function acceptTerms() {
+    const checkbox = document.getElementById("terms-overlay-checkbox");
+    const statusEl = document.getElementById("terms-overlay-status");
+    if (!checkbox.checked) {
+      statusEl.innerHTML = `<div class="status-msg error">Нужно поставить галочку, что ты прочитал(а) условия</div>`;
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/users/me/accept-terms`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось сохранить согласие");
+      document.getElementById("terms-overlay").classList.remove("open");
+    } catch (e) {
+      statusEl.innerHTML = `<div class="status-msg error">${e.message}</div>`;
+    }
+  }
+
+  renderAuthArea();
+  renderMainContent();
+
+  async function loadProfile() {
+    const container = document.getElementById("profile-summary");
+    try {
+      const res = await fetch(`${API_BASE}/users/me`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить профиль");
+      const profile = await res.json();
+      const partnerBadge = profile.verification_status !== "not_submitted"
+        ? `<span class="status-tag ${profile.verification_status}">Партнёрство: ${PARTNER_STATUS_LABELS[profile.verification_status] || profile.verification_status}</span>`
+        : "";
+      container.innerHTML = `
+        <div class="profile-card">
+          <div class="name">${profile.full_name || "Имя не указано"}</div>
+          <div class="sub">${profile.phone || "Телефон не указан"}</div>
+          ${partnerBadge}
+        </div>
+      `;
+
+      renderRenterInfoBlock(profile);
+
+      const partnerBlock = document.getElementById("partner-cabinet-block");
+      partnerBlock.innerHTML = profile.verification_status === "approved"
+        ? `<a href="partner-cabinet.html" class="btn btn-primary" style="margin-top:10px;">Перейти в кабинет партнёра →</a>`
+        : "";
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  function renderRenterInfoBlock(profile) {
+    const block = document.getElementById("renter-info-block");
+    const isComplete = profile.phone && profile.id_document_photo_url;
+
+    if (isComplete) {
+      block.innerHTML = `
+        <div class="profile-card">
+          <div>✅ Телефон: ${profile.phone}</div>
+          <div style="margin-top:8px;">
+            <img src="${profile.id_document_photo_url}" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">
+          </div>
+          <button class="btn btn-primary" style="margin-top:10px;" onclick="renderRenterInfoForm()">Изменить</button>
+        </div>
+      `;
+    } else {
+      renderRenterInfoForm();
+    }
+  }
+
+  function renderRenterInfoForm() {
+    document.getElementById("renter-info-block").innerHTML = `
+      <div class="profile-card">
+        <div class="field">
+          <label>Номер телефона</label>
+          <input type="tel" id="r-phone" placeholder="+7 700 123 45 67">
+        </div>
+        <div class="field">
+          <label>Фото удостоверения личности</label>
+          <input type="file" id="r-id-doc-photo" accept="image/*">
+        </div>
+        <button class="btn btn-primary" id="save-renter-info-btn" onclick="saveRenterInfo()">Сохранить</button>
+        <div id="renter-info-status"></div>
+      </div>
+    `;
+  }
+
+  async function saveRenterInfo() {
+    const statusEl = document.getElementById("renter-info-status");
+    const btn = document.getElementById("save-renter-info-btn");
+    const phone = document.getElementById("r-phone").value;
+    const file = document.getElementById("r-id-doc-photo").files[0];
+
+    if (!phone || !file) {
+      statusEl.innerHTML = `<div class="status-msg error" style="margin-top:8px;">Заполни телефон и прикрепи фото</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Сохраняем...";
+    try {
+      const photoUrl = await uploadToCloudinary(file, "image");
+      const res = await fetch(`${API_BASE}/users/me/renter-info`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` },
+        body: JSON.stringify({ phone, id_document_photo_url: photoUrl })
+      });
+      if (!res.ok) throw new Error("Не удалось сохранить");
+      loadProfile();
+    } catch (e) {
+      statusEl.innerHTML = `<div class="status-msg error" style="margin-top:8px;">${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Сохранить";
+    }
+  }
+
+  async function loadBookings() {
+    const list = document.getElementById("bookings-list");
+    try {
+      const res = await fetch(`${API_BASE}/bookings/my`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить брони");
+      const bookings = await res.json();
+      if (!bookings.length) {
+        list.innerHTML = `<div class="empty-state">У тебя пока нет броней. <a href="index.html">Смотреть каталог →</a></div>`;
+        return;
+      }
+      // Сортируем по дате начала, ближайшие сверху
+      bookings.sort((a, b) => new Date(b.date_from) - new Date(a.date_from));
+
+      list.innerHTML = bookings.map(b => {
+        const canSeeContact = ["confirmed", "picked_up", "returned"].includes(b.status);
+        return `
+          <div class="booking-card">
+            <div class="title">Платье #${b.dress_id}</div>
+            <div class="meta">${b.date_from} → ${b.date_to} · ${b.total_price.toLocaleString("ru-RU")} ₸</div>
+            <span class="status-tag ${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
+            <div id="contact-${b.id}"></div>
+            ${canSeeContact ? `<button class="btn btn-primary" onclick="loadContact(${b.id})">Показать контакты владельца</button>` : ""}
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      list.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  async function loadContact(bookingId) {
+    const container = document.getElementById(`contact-${bookingId}`);
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/contact`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Контакты пока недоступны");
+      container.innerHTML = `
+        <div class="contact-box">
+          <div>${data.owner_name || "Владелец"}: ${data.owner_phone || "телефон не указан"}</div>
+          <div>${buildMessengerLinks(data.owner_phone, data.owner_telegram_username)}</div>
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = `<div class="contact-box" style="color:#A33A3A;">${e.message}</div>`;
+    }
+  }
+</script>
+
+</body>
+</html>
