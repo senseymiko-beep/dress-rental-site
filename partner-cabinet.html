@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кабинет партнёра — Keide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #F7F2EC; --ink: #2A2320; --plum: #4B2E3A; --rose: #C98A9E;
+    --gold: #AD8A50; --line: #E4DACD; --card-bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ivory); color: var(--ink); font-family: 'Manrope', sans-serif; line-height: 1.5; }
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 500; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid var(--line);
+  }
+  .logo { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--plum); }
+  .logo span { color: var(--rose); }
+  a.back-link { color: var(--plum); font-size: 14px; text-decoration: none; font-weight: 600; }
+
+  main { max-width: 820px; margin: 0 auto; padding: 40px 24px; }
+  h1 { font-size: 26px; color: var(--plum); margin-bottom: 8px; }
+  h2 { font-size: 17px; color: var(--plum); margin-top: 32px; margin-bottom: 14px; }
+  .subtitle { color: #8a7d74; font-size: 14px; margin-bottom: 20px; }
+
+  .card {
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  }
+  .card .title { font-weight: 700; color: var(--plum); font-size: 16px; }
+  .card .meta { font-size: 13px; color: #8a7d74; margin-top: 4px; }
+
+  .status-tag { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+  .status-tag.pending { background: #FBF3E3; color: #9A7A2E; }
+  .status-tag.payment_reported { background: #E3EEF9; color: #2E5A9A; }
+  .status-tag.confirmed, .status-tag.picked_up, .status-tag.returned { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.cancelled, .status-tag.disputed { background: #FBEAEA; color: #A33A3A; }
+  .status-tag.approved { background: #E9F3E7; color: #3A6B33; }
+  .status-tag.rejected, .status-tag.archived { background: #F0E7DB; color: #8a7d74; }
+
+  .btn {
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 13px;
+    padding: 8px 16px; border-radius: 100px; border: none; cursor: pointer;
+    text-decoration: none; display: inline-block; margin-top: 8px; margin-right: 8px;
+  }
+  .btn-primary { background: var(--plum); color: var(--ivory); }
+  .btn-whatsapp { background: #25D366; color: white; }
+  .btn-telegram { background: #229ED9; color: white; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #8a7d74; }
+
+  .overlay.open { display: flex !important; }
+  .modal-box {
+    background: var(--card-bg); border-radius: 18px; max-width: 480px; width: 100%;
+    max-height: 88vh; overflow-y: auto; padding: 28px; position: relative;
+  }
+  .modal-box h2 { color: var(--plum); font-size: 22px; }
+  .modal-box .close {
+    position:absolute; top:8px; right:8px; cursor: pointer; font-size: 20px; color: #8a7d74;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  }
+  .field { margin-top: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #5a4f49; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    font-family: 'Manrope', sans-serif; font-size: 16px;
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .actions { margin-top: 22px; }
+  .status-msg { font-size: 13px; margin-top: 10px; padding: 10px 12px; border-radius: 8px; }
+  .status-msg.error { background: #FBEAEA; color: #A33A3A; }
+  .status-msg.ok { background: #E9F3E7; color: #3A6B33; }
+
+  .mobile-tabbar {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card-bg); border-top: 1px solid var(--line); z-index: 150;
+    padding: 6px 0; padding-bottom: env(safe-area-inset-bottom, 6px);
+  }
+  .mobile-tabbar a {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: #8a7d74; font-family: 'Manrope', sans-serif; font-size: 11px; padding: 6px 0; text-decoration: none;
+  }
+  .mobile-tabbar a.active { color: var(--plum); font-weight: 700; }
+  .mobile-tabbar .icon { font-size: 20px; }
+
+  .admin-tabs {
+    display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin: 20px 0 24px; flex-wrap: wrap;
+  }
+  .admin-tab {
+    font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 14px;
+    padding: 10px 18px; border: none; background: none; color: #8a7d74; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .admin-tab.active { color: var(--plum); border-bottom-color: var(--plum); }
+
+  @media (max-width: 760px) {
+    header { padding: 14px 16px; }
+    main { padding: 24px 16px; }
+    h2 { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+    h2 .btn { width: 100%; text-align: center; }
+    .card { flex-direction: column; }
+    .card > div:last-child { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .card .btn { width: 100%; text-align: center; margin-right: 0; }
+    .field-row { grid-template-columns: 1fr; }
+    .overlay { padding: 0; align-items: flex-end; }
+    .modal-box { max-width: 100%; width: 100%; border-radius: 14px 14px 0 0; }
+    body { padding-bottom: 70px; }
+    .mobile-tabbar { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Keide<span>.</span></div>
+  <a href="index.html" class="back-link">← На главную</a>
+</header>
+
+<main>
+  <h1>Кабинет партнёра</h1>
+  <p class="subtitle">Твои платья и заказы на них</p>
+
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="tab-my-dresses" onclick="switchPartnerTab('tab-my-dresses')">Мои платья</button>
+    <button class="admin-tab" data-tab="tab-orders" onclick="switchPartnerTab('tab-orders')">Заказы</button>
+  </div>
+
+  <div id="tab-my-dresses" class="admin-tab-content">
+    <h2 style="display:flex; justify-content:space-between; align-items:center;">
+      Мои платья
+      <button class="btn btn-primary" onclick="document.getElementById('add-overlay').classList.add('open')" style="margin:0;">+ Добавить платье</button>
+    </h2>
+    <div id="dresses-list"><div class="empty-state">Загружаем…</div></div>
+  </div>
+
+  <div id="tab-orders" class="admin-tab-content" style="display:none;">
+    <h2>Заказы на мои платья</h2>
+    <div id="orders-list"><div class="empty-state">Загружаем…</div></div>
+  </div>
+</main>
+
+<!-- Модалка: добавить платье -->
+<div class="overlay" id="add-overlay" style="position:fixed; inset:0; background:rgba(43,35,32,0.45); display:none; align-items:center; justify-content:center; z-index:200; padding:20px;">
+  <div class="modal-box">
+    <span class="close" onclick="document.getElementById('add-overlay').classList.remove('open')">✕</span>
+    <h2>Сдать платье в прокат</h2>
+    <div>
+      <div class="field">
+        <label>Название</label>
+        <input type="text" id="f-title" placeholder="Вечернее платье с открытой спиной">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Бренд</label>
+          <input type="text" id="f-brand" placeholder="Zara, без бренда...">
+        </div>
+        <div class="field">
+          <label>Размер</label>
+          <select id="f-size-select" onchange="handleSizeSelectChange()">
+            <option value="XS">XS</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="XXL">XXL</option>
+            <option value="Другой">Свой размер…</option>
+          </select>
+          <input type="text" id="f-size-custom" placeholder="42-44" style="display:none; margin-top:6px;">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Город</label>
+          <select id="f-city-select" onchange="handleCitySelectChange('f-city-select', 'f-city-custom')">
+            <option value="Алматы">Алматы</option>
+            <option value="Астана">Астана</option>
+            <option value="Актобе">Актобе</option>
+            <option value="Шымкент">Шымкент</option>
+            <option value="Караганда">Караганда</option>
+            <option value="Другой">Другой город…</option>
+          </select>
+          <input type="text" id="f-city-custom" placeholder="Впиши город" style="display:none; margin-top:6px;">
+        </div>
+        <div class="field">
+          <label>Повод (можно несколько)</label>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:4px; font-weight:400; font-size:13px;">
+              <input type="checkbox" value="Свадьба" class="f-occasion-cb" style="width:auto;"> Свадьба
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-weight:400; font-size:13px;">
+              <input type="checkbox" value="Выпускной" class="f-occasion-cb" style="width:auto;"> Выпускной
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-weight:400; font-size:13px;">
+              <input type="checkbox" value="Фотосессия" class="f-occasion-cb" style="width:auto;"> Фотосессия
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-weight:400; font-size:13px;">
+              <input type="checkbox" value="Вечеринка" class="f-occasion-cb" style="width:auto;"> Вечеринка
+            </label>
+            <label style="display:flex; align-items:center; gap:4px; font-weight:400; font-size:13px;">
+              <input type="checkbox" value="Офис" class="f-occasion-cb" style="width:auto;"> Офис
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Цена за 3 дня, ₸</label>
+          <input type="number" id="f-price3" placeholder="15000">
+        </div>
+        <div class="field">
+          <label>Цена за неделю, ₸</label>
+          <input type="number" id="f-price-week" placeholder="30000">
+        </div>
+      </div>
+      <div class="field">
+        <label>Доплата за каждый день сверх недели, ₸</label>
+        <input type="number" id="f-extra-day" placeholder="2000" value="0">
+      </div>
+      <div class="field">
+        <label>Залог, ₸ (возвращается клиенту после сдачи платья в порядке)</label>
+        <input type="number" id="f-deposit" value="0">
+      </div>
+      <div class="field">
+        <label>Описание</label>
+        <textarea id="f-description" placeholder="Состояние, ткань, особенности посадки..."></textarea>
+      </div>
+      <p style="font-size:13px; color:#8a7d74; margin-top:14px;">
+        Фото и видео добавишь следующим шагом — после создания карточки платья.
+      </p>
+      <div class="actions">
+        <button class="btn btn-primary" id="submit-dress-btn" onclick="submitDress()">Создать платье</button>
+      </div>
+      <div id="add-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка: управление фото/видео платья -->
+<div class="overlay" id="media-overlay" style="position:fixed; inset:0; background:rgba(43,35,32,0.45); display:none; align-items:center; justify-content:center; z-index:200; padding:20px;">
+  <div class="modal-box">
+    <span class="close" onclick="document.getElementById('media-overlay').classList.remove('open')">✕</span>
+    <div id="media-overlay-content"></div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "https://dress-rental-api-production.up.railway.app";
+  const authToken = localStorage.getItem("auth_token");
+
+  const CLOUDINARY_CLOUD_NAME = "rf1r05uz";
+
+  function thumbUrl(url, size = 60) {
+    if (!url || !url.includes("/upload/")) return url;
+    return url.replace("/upload/", `/upload/w_${size},h_${size},c_fill,q_auto/`);
+  }
+  const CLOUDINARY_UPLOAD_PRESET = "y2bfmndr";
+
+  const STATUS_LABELS = {
+    pending: "Ожидает оплаты",
+    payment_reported: "Оплата на проверке",
+    confirmed: "Подтверждено",
+    picked_up: "Платье получено",
+    returned: "Платье возвращено",
+    disputed: "Спор",
+    cancelled: "Отменено"
+  };
+
+  const DRESS_STATUS_LABELS = { pending: "На модерации", approved: "Опубликовано", rejected: "Отклонено", archived: "В архиве" };
+
+  function normalizePhoneDigits(phone) {
+    let digits = phone.replace(/[^0-9]/g, "");
+    if (digits.length === 11 && digits.startsWith("8")) {
+      digits = "7" + digits.slice(1);
+    } else if (digits.length === 10) {
+      digits = "7" + digits;
+    }
+    if (digits.length !== 11) {
+      console.warn("Номер телефона не похож на казахстанский/российский формат:", phone);
+    }
+    return digits;
+  }
+
+  function buildMessengerLinks(phone, telegramUsername) {
+    let html = "";
+    if (phone) {
+      const digits = normalizePhoneDigits(phone);
+      html += `<a href="https://wa.me/${digits}" target="_blank" class="btn btn-whatsapp">WhatsApp</a>`;
+    }
+    if (telegramUsername) {
+      html += `<a href="https://t.me/${telegramUsername}" target="_blank" class="btn btn-telegram">Telegram</a>`;
+    }
+    return html;
+  }
+
+  if (!authToken) {
+    document.querySelector("main").innerHTML = `
+      <div class="empty-state">
+        Сначала войди через Telegram в Личном кабинете.<br>
+        <a href="my-account.html" class="btn btn-primary" style="margin-top:14px;">Перейти в Личный кабинет</a>
+      </div>
+    `;
+  } else {
+    checkPartnerAccess();
+  }
+
+  async function checkPartnerAccess() {
+    try {
+      const res = await fetch(`${API_BASE}/users/me`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error();
+      const profile = await res.json();
+
+      if (profile.verification_status !== "approved") {
+        const messages = {
+          not_submitted: "Ты ещё не подавал заявку на партнёрство.",
+          pending: "Твоя заявка на партнёрство ещё на проверке у администратора.",
+          rejected: "Заявка на партнёрство отклонена — свяжись с поддержкой сервиса."
+        };
+        document.querySelector("main").innerHTML = `
+          <div class="empty-state">
+            ${messages[profile.verification_status] || "Кабинет партнёра доступен только одобренным партнёрам."}<br>
+            <a href="index.html" class="btn btn-primary" style="margin-top:14px;">На главную</a>
+          </div>
+        `;
+        return;
+      }
+
+      loadDresses();
+    } catch (e) {
+      document.querySelector("main").innerHTML = `<div class="empty-state">Не удалось проверить доступ. <a href="index.html">На главную</a></div>`;
+    }
+  }
+
+  let ordersLoaded = false;
+
+  function switchPartnerTab(tabId) {
+    document.querySelectorAll(".admin-tab-content").forEach(el => el.style.display = "none");
+    document.querySelectorAll(".admin-tab").forEach(el => el.classList.remove("active"));
+    document.getElementById(tabId).style.display = "block";
+    document.querySelector(`.admin-tab[data-tab="${tabId}"]`).classList.add("active");
+
+    if (tabId === "tab-orders" && !ordersLoaded) {
+      ordersLoaded = true;
+      loadOrders();
+    }
+  }
+
+  let myDressesCache = [];
+
+  async function loadDresses() {
+    const container = document.getElementById("dresses-list");
+    try {
+      const res = await fetch(`${API_BASE}/dresses/mine/list`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить платья — заполни анкету партнёра на главной странице, если ещё не подавал");
+      const dresses = await res.json();
+      myDressesCache = dresses;
+      const visibleDresses = dresses.filter(d => d.status !== "archived");
+      if (!visibleDresses.length) {
+        container.innerHTML = `<div class="empty-state">У тебя пока нет добавленных платьев.</div>`;
+        return;
+      }
+      container.innerHTML = visibleDresses.map(d => `
+        <div class="card" id="dress-card-${d.id}">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            ${d.photo_urls && d.photo_urls[0]
+              ? `<img src="${thumbUrl(d.photo_urls[0], 56)}" loading="lazy" style="width:56px; height:56px; object-fit:cover; border-radius:8px;">`
+              : `<div style="width:56px; height:56px; border-radius:8px; background:#F0E7DB; display:flex; align-items:center; justify-content:center; font-size:11px; color:#a89a89;">Фото нет</div>`}
+            <div>
+              <div class="title">${d.title}</div>
+              <div class="meta">${d.city} · размер ${d.size} · от ${d.price_3day.toLocaleString("ru-RU")} ₸ / 3 дня</div>
+              <span class="status-tag ${d.status}" style="margin-top:6px; display:inline-block;">${DRESS_STATUS_LABELS[d.status] || d.status}</span>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-primary" style="padding:6px 14px; font-size:12px;" onclick="openMediaManager(${d.id})">Фото/видео</button>
+            <button class="btn" style="padding:6px 14px; font-size:12px; background:#FBEAEA; color:#A33A3A;" onclick="deleteDress(${d.id})">Удалить</button>
+          </div>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  async function loadOrders() {
+    const container = document.getElementById("orders-list");
+    try {
+      const res = await fetch(`${API_BASE}/bookings/owner`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось загрузить заказы");
+      const orders = await res.json();
+      if (!orders.length) {
+        container.innerHTML = `<div class="empty-state">Заказов пока нет.</div>`;
+        return;
+      }
+      // Сначала те, что требуют действия
+      const priority = { confirmed: 0, payment_reported: 1, picked_up: 2 };
+      orders.sort((a, b) => (priority[a.status] ?? 9) - (priority[b.status] ?? 9));
+
+      container.innerHTML = orders.map(o => `
+        <div class="card" id="order-${o.id}">
+          <div>
+            <div class="title">${o.dress_title}</div>
+            <div class="meta">${o.date_from} → ${o.date_to} · ${o.total_price.toLocaleString("ru-RU")} ₸ (комиссия ${o.commission_amount.toLocaleString("ru-RU")} ₸)</div>
+            <div class="meta">Арендатор: ${o.renter_name || "—"} · ${o.renter_phone || ""}</div>
+            <div style="margin-top:6px;">${buildMessengerLinks(o.renter_phone, o.renter_telegram_username)}</div>
+            <span class="status-tag ${o.status}" style="margin-top:6px; display:inline-block;">${STATUS_LABELS[o.status] || o.status}</span>
+            <div>
+              ${o.status === "confirmed" ? `<button class="btn btn-primary" onclick="updateOrderStatus(${o.id}, 'picked_up')">Отметить: платье выдано</button>` : ""}
+              ${o.status === "picked_up" ? `<button class="btn btn-primary" onclick="updateOrderStatus(${o.id}, 'returned')">Отметить: платье возвращено</button>` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = `<div class="empty-state">${e.message}</div>`;
+    }
+  }
+
+  async function updateOrderStatus(bookingId, newStatus) {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/status?new_status=${newStatus}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не получилось обновить статус");
+      loadOrders();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteDress(dressId) {
+    if (!confirm("Удалить это платье навсегда?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/dresses/${dressId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не получилось удалить платье");
+      const data = await res.json();
+      if (data.deleted === false && data.note) {
+        alert(data.note);
+      }
+      loadDresses();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function openMediaManager(dressId) {
+    const dress = myDressesCache.find(d => d.id === dressId);
+    if (!dress) return;
+    renderMediaManager(dress);
+    document.getElementById("media-overlay").classList.add("open");
+  }
+
+  function renderMediaManager(dress) {
+    const photos = dress.photo_urls || [];
+    document.getElementById("media-overlay-content").innerHTML = `
+      <h2>Фото и видео</h2>
+      <p style="font-size:13px; color:#8a7d74; margin-top:6px;">${dress.title}</p>
+
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;">
+        ${photos.map(p => `
+          <div style="position:relative;">
+            <img src="${p}" style="width:80px; height:80px; object-fit:cover; border-radius:8px;">
+            <span onclick="removePhoto(${dress.id}, '${p}')" style="position:absolute; top:-6px; right:-6px; background:#A33A3A; color:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;">✕</span>
+          </div>
+        `).join("")}
+      </div>
+
+      ${photos.length < 5 ? `
+        <div class="field" style="margin-top:14px;">
+          <label>Добавить фото (можно выбрать сразу несколько)</label>
+          <input type="file" id="media-new-photo" accept="image/*" multiple>
+        </div>
+      ` : `<p style="font-size:12px; color:#8a7d74; margin-top:10px;">Максимум 5 фото уже загружено.</p>`}
+
+      <div class="field" style="margin-top:14px;">
+        <label>Видео-разворот (до 15 секунд)</label>
+        ${dress.video_url ? `
+          <video controls style="width:100%; border-radius:8px;"><source src="${dress.video_url}" type="video/mp4"></video>
+          <button class="btn" style="margin-top:8px; background:#FBEAEA; color:#A33A3A;" onclick="removeVideo(${dress.id})">Удалить видео</button>
+        ` : `
+          <input type="file" id="media-new-video" accept="video/*">
+        `}
+      </div>
+
+      ${(photos.length < 5 || !dress.video_url) ? `
+        <div class="actions">
+          <button class="btn btn-primary" onclick="uploadAllMedia(${dress.id})">Загрузить</button>
+        </div>
+      ` : ""}
+
+      <div id="media-status"></div>
+    `;
+  }
+
+  async function refreshDressInCache(dressId) {
+    const res = await fetch(`${API_BASE}/dresses/${dressId}`, {
+      headers: { "Authorization": `Bearer ${authToken}` }
+    });
+    const updated = await res.json();
+    const idx = myDressesCache.findIndex(d => d.id === dressId);
+    if (idx !== -1) myDressesCache[idx] = updated;
+    return updated;
+  }
+
+  // Загрузка с отслеживанием процента — нужна для видео, чтобы человек видел,
+  // что процесс идёт, а не просто "завис"
+  function uploadToCloudinaryWithProgress(file, resourceType, onProgress) {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          resolve(JSON.parse(xhr.responseText).secure_url);
+        } else {
+          reject(new Error("Не удалось загрузить файл в Cloudinary"));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Ошибка сети при загрузке"));
+      xhr.send(formData);
+    });
+  }
+
+  // Одна кнопка — грузит и фото (сколько выбрано), и видео (если выбрано),
+  // по очереди; ошибка одного файла не мешает остальным
+  async function uploadAllMedia(dressId) {
+    const statusEl = document.getElementById("media-status");
+    const photoInput = document.getElementById("media-new-photo");
+    const videoInput = document.getElementById("media-new-video");
+
+    const photoFiles = photoInput ? Array.from(photoInput.files) : [];
+    const videoFile = videoInput && videoInput.files[0] ? videoInput.files[0] : null;
+
+    if (!photoFiles.length && !videoFile) {
+      statusEl.innerHTML = `<div class="status-msg error">Выбери хотя бы один файл</div>`;
+      return;
+    }
+
+    let successCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < photoFiles.length; i++) {
+      const file = photoFiles[i];
+      statusEl.innerHTML = `<div class="status-msg ok">Загружаем фото ${i + 1} из ${photoFiles.length}…</div>`;
+      try {
+        const current = myDressesCache.find(d => d.id === dressId);
+        if (current && (current.photo_urls || []).length >= 5) {
+          errors.push(`Фото ${i + 1}: достигнут лимит в 5 фото`);
+          break;
+        }
+        const url = await uploadToCloudinary(file, "image");
+        const res = await fetch(`${API_BASE}/dresses/${dressId}/media`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` },
+          body: JSON.stringify({ photo_url: url })
+        });
+        if (!res.ok) throw new Error("сервер отклонил файл");
+        await refreshDressInCache(dressId);
+        successCount++;
+      } catch (e) {
+        errors.push(`Фото ${i + 1}: ${e.message}`);
+      }
+    }
+
+    if (videoFile) {
+      try {
+        await checkVideoDuration(videoFile);
+        const url = await uploadToCloudinaryWithProgress(videoFile, "video", (percent) => {
+          statusEl.innerHTML = `<div class="status-msg ok">Загружаем видео: ${percent}%</div>`;
+        });
+        const res = await fetch(`${API_BASE}/dresses/${dressId}/media`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` },
+          body: JSON.stringify({ video_url: url })
+        });
+        if (!res.ok) throw new Error("сервер отклонил видео");
+        await refreshDressInCache(dressId);
+        successCount++;
+      } catch (e) {
+        errors.push(`Видео: ${e.message}`);
+      }
+    }
+
+    const updated = myDressesCache.find(d => d.id === dressId);
+    renderMediaManager(updated);
+    loadDresses();
+
+    const statusParts = [];
+    if (successCount) statusParts.push(`Загружено файлов: ${successCount}`);
+    if (errors.length) statusParts.push(`Ошибки: ${errors.join("; ")}`);
+    document.getElementById("media-status").innerHTML =
+      `<div class="status-msg ${errors.length ? 'error' : 'ok'}">${statusParts.join(" · ")}</div>`;
+  }
+
+  async function removePhoto(dressId, photoUrl) {
+    try {
+      const res = await fetch(`${API_BASE}/dresses/${dressId}/photo?photo_url=${encodeURIComponent(photoUrl)}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось удалить фото");
+      const updated = await refreshDressInCache(dressId);
+      renderMediaManager(updated);
+      loadDresses();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function removeVideo(dressId) {
+    try {
+      const res = await fetch(`${API_BASE}/dresses/${dressId}/video`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error("Не удалось удалить видео");
+      const updated = await refreshDressInCache(dressId);
+      renderMediaManager(updated);
+      loadDresses();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+  function handleCitySelectChange(selectId, customId) {
+    const select = document.getElementById(selectId);
+    const custom = document.getElementById(customId);
+    custom.style.display = select.value === "Другой" ? "block" : "none";
+  }
+
+  function handleSizeSelectChange() {
+    const select = document.getElementById("f-size-select");
+    const custom = document.getElementById("f-size-custom");
+    custom.style.display = select.value === "Другой" ? "block" : "none";
+  }
+
+  function checkVideoDuration(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        if (video.duration > 15) {
+          reject(new Error(`Видео длиной ${Math.round(video.duration)} сек — максимум 15 секунд`));
+        } else {
+          resolve();
+        }
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function uploadToCloudinary(file, resourceType) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+      { method: "POST", body: formData }
+    );
+    if (!res.ok) throw new Error("Не удалось загрузить файл в Cloudinary");
+    const data = await res.json();
+    return data.secure_url;
+  }
+
+  async function submitDress() {
+    const statusEl = document.getElementById("add-status");
+    const submitBtn = document.getElementById("submit-dress-btn");
+
+    const title = document.getElementById("f-title").value;
+
+    const sizeSelect = document.getElementById("f-size-select").value;
+    const size = sizeSelect === "Другой" ? document.getElementById("f-size-custom").value : sizeSelect;
+
+    const citySelect = document.getElementById("f-city-select").value;
+    const city = citySelect === "Другой" ? document.getElementById("f-city-custom").value : citySelect;
+
+    const occasions = Array.from(document.querySelectorAll(".f-occasion-cb:checked")).map(cb => cb.value);
+
+    if (!title || !size || !city) {
+      statusEl.innerHTML = `<div class="status-msg error">Заполни название, размер и город</div>`;
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Сохраняем...";
+    statusEl.innerHTML = "";
+
+    try {
+      const payload = {
+        title,
+        brand: document.getElementById("f-brand").value,
+        size,
+        city,
+        occasions,
+        price_3day: parseInt(document.getElementById("f-price3").value || "0"),
+        price_week: parseInt(document.getElementById("f-price-week").value || "0"),
+        extra_day_price: parseInt(document.getElementById("f-extra-day").value || "0"),
+        deposit: parseInt(document.getElementById("f-deposit").value || "0"),
+        description: document.getElementById("f-description").value,
+        measurements: {}
+      };
+
+      const res = await fetch(`${API_BASE}/dresses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Ошибка отправки");
+
+      statusEl.innerHTML = `<div class="status-msg ok">Платье создано! Теперь добавь фото/видео.</div>`;
+      await loadDresses();
+
+      setTimeout(() => {
+        document.getElementById("add-overlay").classList.remove("open");
+        openMediaManager(data.id);
+      }, 1000);
+    } catch (e) {
+      statusEl.innerHTML = `<div class="status-msg error">${e.message}</div>`;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Создать платье";
+    }
+  }
+</script>
+
+<!-- Нижняя панель вкладок — видна только на мобильном -->
+<nav class="mobile-tabbar">
+  <a href="index.html"><span class="icon">🏠</span>Главная</a>
+  <a href="catalog.html"><span class="icon">👗</span>Каталог</a>
+  <a href="my-account.html"><span class="icon">👤</span>Кабинет</a>
+</nav>
+
+</body>
+</html>
